@@ -1,0 +1,48 @@
+def remover_fundo_v4(path, debug=True):
+    import cv2
+    import numpy as np
+    from PIL import Image
+    from scipy.ndimage import binary_fill_holes
+
+    img = np.array(Image.open(path).convert('RGB'))
+    h, w = img.shape[:2]
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+    H, S, V = hsv[:,:,0], hsv[:,:,1], hsv[:,:,2]
+
+    azul         = (H >= 88) & (H <= 138) & (S >= 30) & (V >= 10)
+    escuro       = V < 40
+    branco_ciano = (S < 60) & (V > 150)
+    ciano        = (H >= 75) & (H <= 105) & (S >= 50)
+
+    fundo_bin = (azul | escuro | branco_ciano | ciano).astype(np.uint8)
+    canvas = np.zeros((h, w), dtype=np.uint8)
+    canvas[fundo_bin == 1] = 255
+
+    # ✅ .copy() garante array C-contiguous — necessário pro cv2.floodFill no Colab
+    flood = np.ascontiguousarray(canvas.copy())
+    mf = np.zeros((h+2, w+2), dtype=np.uint8)
+
+    for x in range(0, w, 20):
+        cv2.floodFill(flood, mf, (x, 0),   128)
+        cv2.floodFill(flood, mf, (x, h-1), 128)
+    for y in range(0, h, 20):
+        cv2.floodFill(flood, mf, (0,   y), 128)
+        cv2.floodFill(flood, mf, (w-1, y), 128)
+
+    fundo_final = ~binary_fill_holes(~(flood == 128))
+    resultado = img.copy()
+    resultado[fundo_final] = 0
+
+    pct = 100 * fundo_final.sum() / (h * w)
+
+    if debug:
+        import matplotlib.pyplot as plt
+        fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+        axes[0].imshow(img);                        axes[0].set_title('Original');     axes[0].axis('off')
+        axes[1].imshow(fundo_final, cmap='Blues');  axes[1].set_title(f'Máscara — {fundo_final.sum():,} px ({pct:.1f}%)'); axes[1].axis('off')
+        axes[2].imshow(resultado);                  axes[2].set_title('Resultado');    axes[2].axis('off')
+        plt.tight_layout()
+        plt.show()
+        print(f'Pixels removidos: {fundo_final.sum():,} ({pct:.1f}%)')
+
+    return img, fundo_final, resultado
