@@ -29,14 +29,14 @@ Resultado: um modelo 3D com aproximadamente **2,27 milhões de vértices** e **4
 
 ## 🧊 Reconstrução 3D — `reconstrucao_3d_vhp.py`
 
-Reconstrói a malha 3D a partir das máscaras binárias segmentadas.
+Reconstrói a malha 3D a partir das **imagens binárias sem fundo** (máscaras segmentadas, sem o fundo original da imagem).
 
 **Parâmetros principais:**
 
 | Parâmetro | Valor | Descrição |
 |---|---|---|
 | `FATOR` | 0.25 | Fator de downscaling das imagens |
-| `SPACING_XY` | 0.33 mm/px | Espaçamento entre pixels no plano XY |
+| `SPACING_XY` | 0.33 mm/px | Espaçamento entre pixels no plano XY (valor ajustado após testes) |
 | `SPACING_Z` | 1.0 mm | Espaçamento entre fatias no eixo Z |
 | `CHUNK_SIZE` | 64 | Tamanho do bloco para Marching Cubes em chunks |
 | `OVERLAP` | 16 | Sobreposição entre chunks |
@@ -77,7 +77,7 @@ Durante o desenvolvimento, diversos obstáculos de engenharia foram superados:
 - Bugs de mapeamento de eixos na reprojeção de textura
 - Falhas do OpenCV em caminhos com acentos (contornado com Pillow e caminhos curtos)
 - Detecção de arquivos duplicados no Windows
-- Espaçamento XY incorreto do VHP (corrigido para 0.33 mm/px)
+- Espaçamento XY do VHP ajustado para 0.33 mm/px após testes
 - Mudanças na API do `trimesh`
 - *File-locking* do `numpy.memmap` no Windows
 
