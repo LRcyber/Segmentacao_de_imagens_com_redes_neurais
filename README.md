@@ -1,123 +1,111 @@
-# Reconstrução 3D do Visible Human Project via Segmentação por Deep Learning
+# 3D Reconstruction of the Visible Human Project via Deep Learning-based Segmentation
 
-Pipeline completo para reconstrução tridimensional de estruturas anatômicas a partir do dataset **Visible Human Project (VHP)**, utilizando segmentação semântica com **U-Net**, reconstrução de malha 3D e reprojeção de textura de pele.
+A complete pipeline for the three-dimensional reconstruction of anatomical structures from the **Visible Human Project (VHP)** dataset, utilizing semantic segmentation with **U-Net**, 3D mesh reconstruction, and skin texture reprojection.
 
-Projeto desenvolvido como Trabalho de Conclusão de Curso (TCC) em Ciência da Computação — Universidade Estadual de Santa Cruz (UESC).
-
----
-
-## 📋 Visão geral
-
-O pipeline transforma uma sequência de **1.865 imagens 2D** do dataset VHP em um **modelo 3D texturizado**, passando por três grandes etapas:
-
-1. **Segmentação semântica** das fatias com uma U-Net treinada, gerando máscaras binárias.
-2. **Reconstrução da malha 3D** a partir das máscaras via Marching Cubes.
-3. **Reprojeção de textura RGB** (pele) sobre a malha reconstruída.
-
-Resultado: um modelo 3D com aproximadamente **2,27 milhões de vértices** e **4,54 milhões de faces**.
+Project developed as a final-year undergraduate thesis (TCC) in Computer Science at the State University of Santa Cruz (UESC).
 
 ---
 
-## 🧠 Segmentação (U-Net)
+## 📋 Overview
 
-- Modelo treinado: `2026-05-18_Unet_visible_best.h5`
-- Aplicado sobre as 1.865 imagens PNG do VHP
-- Avaliação com **coeficiente de Dice** e **IoU**
-- Máscaras binárias (não as imagens coloridas segmentadas) foram usadas como entrada para a reconstrução — uso das imagens coloridas diretamente causava vértices internos indesejados (segmentando órgãos internos) e estouro de memória, inviabilizando o fechamento da malha.
+The pipeline transforms a sequence of **1,865 2D images** from the VHP dataset into a **textured 3D model** through three main stages:
+
+1. **Semantic segmentation** of the slices using a trained U-Net, generating binary masks.
+2. **3D mesh reconstruction** from the masks via the Marching Cubes algorithm.
+3. **RGB texture (skin) reprojection** onto the reconstructed mesh.
+
+Result: a 3D model with approximately **2.27 million vertices** and **4.54 million faces**.
 
 ---
 
-## 🧊 Reconstrução 3D — `reconstrucao_3d_vhp.py`
+## 🧠 Segmentation (U-Net)
 
-Reconstrói a malha 3D a partir das **imagens binárias sem fundo** (máscaras segmentadas, sem o fundo original da imagem).
+- Trained model: `2026-05-18_Unet_visible_best.h5`
+- Applied to the 1,865 PNG images from the VHP dataset.
+- Evaluated using the **Dice coefficient** and **IoU (Intersection over Union)**.
+- Binary masks (rather than the segmented color images) were used as input for the reconstruction; using the color images directly resulted in unwanted internal vertices (due to the segmentation of internal organs) and memory overflow, which prevented the mesh from being properly closed. ---
 
-**Parâmetros principais:**
+## 🧊 3D Reconstruction — `reconstrucao_3d_vhp.py`
 
-| Parâmetro | Valor | Descrição |
+Reconstructs a 3D mesh from **background-removed binary images** (segmented masks, with the original image background excluded).
+
+**Key Parameters:**
+
+| Parameter | Value | Description |
 |---|---|---|
-| `FATOR` | 0.25 | Fator de downscaling das imagens |
-| `SPACING_XY` | 0.33 mm/px | Espaçamento entre pixels no plano XY (valor ajustado após testes) |
-| `SPACING_Z` | 1.0 mm | Espaçamento entre fatias no eixo Z |
-| `CHUNK_SIZE` | 64 | Tamanho do bloco para Marching Cubes em chunks |
-| `OVERLAP` | 16 | Sobreposição entre chunks |
+| `FATOR` | 0.25 | Image downscaling factor |
+| `SPACING_XY` | 0.33 mm/px | Pixel spacing in the XY plane (value adjusted based on testing) |
+| `SPACING_Z` | 1.0 mm | Spacing between slices along the Z-axis |
+| `CHUNK_SIZE` | 64 | Block size for chunk-based Marching Cubes |
+| `OVERLAP` | 16 | Overlap between chunks |
 
-**Etapas:**
-- Interpolação isotrópica via `scipy.ndimage.zoom`
-- Marching Cubes em chunks (processamento por blocos, evitando estouro de memória)
-- Suavização por Laplacian smoothing
-- Exportação: `model3d.ply`
+**Steps:**
+- Isotropic interpolation via `scipy.ndimage.zoom`
+- Chunk-based Marching Cubes (block-wise processing to prevent memory overflow)
+- Smoothing via Laplacian smoothing
+- Export: `model3d.ply`
 
 ---
 
-## 🎨 Texturização — `aplicar_textura_pele.py` (v7)
+## 🎨 Texturing — `aplicar_textura_pele.py` (v7)
 
-Aplica a textura RGB de pele sobre a malha reconstruída, usando o canal alfa das imagens PNG transparentes como máscara.
+Applies RGB skin texture onto the reconstructed mesh, using the alpha channel of the transparent PNG images as a mask.
 
-**Parâmetros principais:**
+**Key Parameters:**
 
-| Parâmetro | Valor | Descrição |
+| Parameter | Value | Description |
 |---|---|---|
-| `EROSAO_BORDA` | 6 px | Erosão morfológica nas bordas do canal alfa |
-| `ESPESSURA_CASCA` | 20 px | Espessura da "casca" de pele via distance transform |
-| `JANELA_BLEND` | ±1 fatia | Janela de blending entre fatias adjacentes |
+| `EROSAO_BORDA` | 6 px | Morphological erosion applied to the edges of the alpha channel |
+| `ESPESSURA_CASCA` | 20 px | Thickness of the skin "shell" via distance transform |
+| `JANELA_BLEND` | ±1 slice | Blending window between adjacent slices | **Output:** `model3d_texturizado_v7.ply` — a model with preserved texture details (e.g., an American flag tattoo).
 
-**Saída:** `model3d_texturizado_v7.ply` — modelo com detalhes de textura preservados (ex.: tatuagem de bandeira americana).
-
-> Observação: o modelo sólido foi exportado sem coloração de vértices; o modelo oco carrega a textura de pele e os detalhes visuais.
+> Note: The solid model was exported without vertex colors; the hollow model retains the skin texture and visual details.
 
 ---
 
-## 🔧 Problemas técnicos resolvidos
+## 🔧 Technical issues resolved
 
-Durante o desenvolvimento, diversos obstáculos de engenharia foram superados:
+During development, several engineering obstacles were overcome:
 
-- Limitação de *long path* do Windows quebrando o TensorFlow
-- Erros de Unicode em caminhos de arquivo
-- Barras de progresso congelando durante processamento longo
-- Bugs de mapeamento de eixos na reprojeção de textura
-- Falhas do OpenCV em caminhos com acentos (contornado com Pillow e caminhos curtos)
-- Detecção de arquivos duplicados no Windows
-- Espaçamento XY do VHP ajustado para 0.33 mm/px após testes
-- Mudanças na API do `trimesh`
-- *File-locking* do `numpy.memmap` no Windows
-
----
-
-## 📈 Evolução do projeto
-
-O pipeline atual é resultado de diversas iterações:
-
-1. **3D Slicer** (Threshold → Islands → Smoothing → Create Closed Surface → Wrap Solidify → exportação PLY → visualização no MeshLab), com script Python de *color-baking* mapeando coordenadas de vértices OBJ para pixels de imagens PNG.
-2. **Regra Delta (RGBDZ)** — subtração pixel a pixel entre fatias consecutivas do VHP para extrair informação de superfície, reproduzindo abordagem de trabalho anterior da UESC (Bomfim, 2017).
-3. Protótipo em **Google Colab** antes da migração para execução local em Windows.
-4. Pipeline atual, totalmente em Python, com segmentação por U-Net e reconstrução via Marching Cubes.
+- Windows "long path" limitations causing TensorFlow to fail
+- Unicode errors in file paths
+- Progress bars freezing during long processing tasks
+- Axis-mapping bugs during texture reprojection
+- OpenCV failures when handling paths with accented characters (resolved by using Pillow and short file paths)
+- Detection of duplicate files on Windows
+- VHP XY-spacing adjusted to 0.33 mm/px based on testing results
+- Changes to the `trimesh` API
+- File-locking issues with `numpy.memmap` on Windows
 
 ---
 
-## 📚 Trabalhos relacionados
+## 📈 Project evolution
 
-Comparado a trabalhos anteriores de reconstrução 3D do VHP (Bonfim, 2017; Bastos, 2020; Campos, 2022), este pipeline:
+The current pipeline is the result of several iterations:
 
-- Utiliza o **conjunto completo de imagens**, sem necessidade de redução de dados
-- Produz modelos **mais detalhados**
-- Evita as limitações de qualidade observadas nos trabalhos anteriores
+1. **3D Slicer** (Threshold → Islands → Smoothing → Create Closed Surface → Wrap Solidify → PLY export → visualization in MeshLab), utilizing a Python script for "color-baking" that maps OBJ vertex coordinates to pixels in PNG images.
+2. **Delta Rule (RGBDZ)** — pixel-by-pixel subtraction between consecutive VHP slices to extract surface information, replicating an approach from previous work at UESC (Bomfim, 2017).
+3. A prototype developed in **Google Colab** prior to migrating to a local Windows environment.
+4. The current pipeline, implemented entirely in Python, featuring segmentation via U-Net and reconstruction using the Marching Cubes algorithm. ---
 
----
+## 📚 Related work
 
-## 🚀 Direções futuras
+Compared to previous 3D reconstruction studies using the VHP dataset (Bonfim, 2017; Bastos, 2020; Campos, 2022), this pipeline:
 
-- Arquiteturas de segmentação mais recentes: **UNet++**, **UNet 3D** (Zhou et al., 2018)
-- Aplicações relacionadas em sensoriamento remoto (LeCun; Bengio; Hinton, 2015)
-- Exploração de **Attention U-Net** e **SAM (Segment Anything Model)** como estado da arte em segmentação
-
----
-
-## 🛠️ Stack técnica
-
-`Python` · `TensorFlow/Keras` · `OpenCV` · `scipy` · `trimesh` · `3D Slicer` · `MeshLab`
+- Utilizes the **complete set of images**, with no need for data reduction
+- Produces **more detailed** models
+- Avoids the quality limitations observed in previous studies
 
 ---
 
-## 📄 Licença / Contexto acadêmico
+## 🚀 Future directions
 
-Projeto desenvolvido no âmbito de um Trabalho de Conclusão de Curso em Ciência da Computação (UESC), com documentação formatada segundo as normas ABNT.
+- More recent segmentation architectures: **UNet++**, **3D UNet** (Zhou et al., 2018)
+- Related applications in remote sensing (LeCun; Bengio; Hinton, 2015)
+- Exploration of **Attention U-Net** and **SAM (Segment Anything Model)** as state-of-the-art approaches in segmentation
+
+---
+
+## 🛠️ Technical stack
+
+`Python` · `TensorFlow/Keras` · `OpenCV` · `scipy` · `trimesh`
